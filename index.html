@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniCou | International Education & Exam Vouchers</title>
+    
+    <base href="/">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"DejaVu Sans"', 'Tahoma', 'ui-sans-serif', 'system-ui'],
+              display: ['"DejaVu Sans"', 'Tahoma', 'sans-serif'],
+            },
+            colors: {
+              unicou: {
+                navy: '#194f68',    // Dark Azure
+                orange: '#e95134',  // Vivid Red
+                charcoal: '#4A4A4A', // Charcoal Text
+                ice: '#f8fafc',      // Background
+                slate: '#9ca3af'     // Grey (for hints)
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --nav-height: 70px;
+        --content-top: 110px; 
+      }
+      body {
+        background-color: #ffffff;
+        color: #4A4A4A;
+        margin: 0;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+      .view-container {
+        padding-top: var(--content-top);
+        min-height: calc(100vh - var(--nav-height));
+      }
+      .vibrant-strip {
+        height: 3px;
+        background-color: #e95134;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(233, 81, 52, 0.3);
+      }
+      .brand-border-orange {
+        border-color: rgba(233, 81, 52, 0.4);
+      }
+      h1, h2, h3, h4 { font-weight: 900; color: #194f68; }
+      
+      /* Placeholder styling for Grey hints */
+      ::placeholder {
+        color: #9ca3af !important;
+        opacity: 1;
+      }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/assets/index-DqdAaND6.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/vendor-iteXvzze.js">
+</head>
+<body class="font-sans antialiased">
+    <div id="root"></div>
+</body>
+</html>
