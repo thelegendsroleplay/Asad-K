@@ -1,0 +1,52 @@
+<?php
+
+/**
+ * Implements hook_entity_presave().
+ */
+function partners_agreement_entity_presave(Drupal\Core\Entity\EntityInterface $entity)
+{
+    // Check if the entity is a node of type "partners_agreement".
+    if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'partners_agreement') {
+        // Get the author user ID.
+        $author_id = $entity->getOwnerId();
+
+        // Load the user entity and retrieve the name.
+        $author = \Drupal\user\Entity\User::load($author_id);
+        if ($author) {
+            $author_name = $author->getDisplayName();
+
+            // Log the author's name in Drupal logs.
+            \Drupal::logger('partners_agreement')->notice('A new partners agreement node is being created by author: @name', [
+                '@name' => $author_name,
+            ]);
+        }
+    }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() to restrict multiple node creation.
+ */
+function partners_agreement_form_node_partners_agreement_form_alter(array &$form, \Drupal\Core\Form\FormStateInterface $form_state)
+{
+    $current_user = \Drupal::currentUser();
+    $user_id = $current_user->id();
+
+    // Check if there are any existing nodes of type 'partners_agreement' authored by the current user.
+    $query = \Drupal::entityQuery('node')
+        ->condition('type', 'partners_agreement')
+        ->condition('uid', $user_id)
+        ->accessCheck(FALSE)
+        ->range(0, 1);
+
+    $nids = $query->execute();
+
+    // If the user has authored any 'partners_agreement' nodes, redirect to /user.
+    if (!empty($nids)) {
+        $response = new \Symfony\Component\HttpFoundation\RedirectResponse('/user');
+        $response->send();
+        // Stop further processing.
+        \Drupal::messenger()->addWarning(t('You are not allowed to create another partners agreement.'));
+        \Drupal::service('kernel')->terminate();
+        exit();
+    }
+}

@@ -1,0 +1,7 @@
+name: 'Agreements Workflow Global'
+type: module
+description: 'Provides global access to workflow states for the Agreements workflow.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - drupal:workflow

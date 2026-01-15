@@ -1,0 +1,270 @@
+<?php
+
+use Drupal\node\Entity\Node;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\user\Entity\User;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Access\AccessResult;
+use Drupal\block\Entity\Block;
+
+
+/**
+ * Implements hook_node_presave().
+ */
+function agreements_workflow_global_node_presave(NodeInterface $node)
+{
+    // Check if the node is of type "partners_agreement".
+    // if ($node->bundle() === 'partners_agreement') {
+    //     // Get the current user.
+    //     $current_user = \Drupal::currentUser();
+    //     $user_name = $current_user->getDisplayName();
+
+    //     // Set the title to the user's display name with a custom suffix.
+    //     $node->setTitle($user_name . ' - Partner');
+
+    //     // Log the title setting for debugging.
+    //     \Drupal::logger('agreements_workflow_global')->info('Set default title to "@title" for new node.', [
+    //         '@title' => $node->getTitle(),
+    //     ]);
+    // }
+    // Check if the node is of type "partners_agreement".
+    if ($node->bundle() === 'partners_agreement') {
+        // Only set the title when the node is new.
+        if ($node->isNew()) {
+            // Get the current user (author of the node).
+            $current_user = \Drupal::currentUser();
+            $author_name = $current_user->getDisplayName();
+
+            // Set the title to the author's name with the suffix " - Partner".
+            $node->setTitle($author_name . ' - Partner');
+
+            // Log the title setting for debugging.
+            \Drupal::logger('agreements_workflow_global')->info('Set default title to "@title" for new node.', [
+                '@title' => $node->getTitle(),
+            ]);
+        } else {
+            // Log that the title was not updated because the node is not new.
+            \Drupal::logger('agreements_workflow_global')->info('Node is not new; title was not updated.');
+        }
+    }
+    
+}
+
+
+
+/**
+ * Implements hook_entity_presave().
+ */
+function agreements_workflow_global_entity_presave(EntityInterface $entity)
+{
+    // Check if the entity is a node of type "partners_agreement".
+    if ($entity instanceof Node && $entity->bundle() === 'partners_agreement') {
+        // Get the current state of the node in the "Agreements" workflow.
+        $workflow_state = $entity->get('moderation_state')->value;
+
+        // Log the current state for debugging.
+        \Drupal::logger('agreements_workflow_global')->info('Current state of node @nid is @state', [
+            '@nid' => $entity->id(),
+            '@state' => $workflow_state,
+        ]);
+
+        // Store the workflow state in the State API for retrieval in preprocess.
+        \Drupal::state()->set('agreements_workflow_global.workflow_state', $workflow_state);
+    }
+}
+
+/**
+ * Implements hook_preprocess_page().
+ */
+function agreements_workflow_global_preprocess_page(array &$variables)
+{
+    // Retrieve the workflow state from state API and pass it to Twig.
+    $workflow_state = \Drupal::state()->get('agreements_workflow_global.workflow_state');
+
+    // Make the workflow state globally available in page templates.
+    $variables['workflow_state'] = $workflow_state;
+}
+
+
+/**
+ * Implements hook_form_FORM_ID_alter() for the partners_agreement node form.
+ */
+function agreements_workflow_global_form_node_partners_agreement_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state)
+{
+    // Log that we are inside the form alter function.
+    \Drupal::logger('agreements_workflow_global')->info('Altering the add form for partners_agreement.');
+    $current_user = \Drupal::currentUser();
+
+    $author_name = $current_user->getDisplayName();
+
+    // Modify the title default value.
+    if (isset($form['title'])) {
+        // Get the node entity from the form state.
+        $node = $form_state->getFormObject()->getEntity();
+
+        // Ensure this is a node and of the correct type.
+        if ($node instanceof Node && $node->bundle() === 'partners_agreement') {
+            // Set the default value for the title only if the node is new.
+            $first_name = $node->get('field_first_name')->value ?? 'Unknown';
+
+            if ($node->isNew()) {
+                $form['title']['widget'][0]['value']['#default_value'] = $first_name . ' - Partner';
+            }
+
+            // Hide the title field from the form.
+            $form['title']['#access'] = FALSE;
+
+            // Log the title default value.
+            \Drupal::logger('agreements_workflow_global')->info('Title field hidden with default value set to "@title".', [
+                '@title' => $form['title']['widget'][0]['value']['#default_value'] ?? 'Not set',
+            ]);
+        }
+    }
+
+    // Hide the field_signatures by default.
+    if (isset($form['field_signatures'])) {
+        $form['field_signatures']['#access'] = FALSE;
+        \Drupal::logger('agreements_workflow_global')->info('Field "field_signatures" is set to hidden by default on add form.');
+    }
+
+    if ($current_user->hasRole('administrator')) {
+        // Show the field for admin role.
+        if (isset($form['field_block_test'])) {
+            $form['field_block_test']['#access'] = TRUE;
+        }
+        if (isset($form['field_partner_category'])) {
+            $form['field_partner_category']['#access'] = TRUE;
+        }
+        if (isset($form['field_unicou_signature'])) {
+            $form['field_unicou_signature']['#access'] = TRUE;
+        }
+    } else {
+        // Hide the field for non-admin roles.
+        if (isset($form['field_block_test'])) {
+            $form['field_block_test']['#access'] = FALSE;
+        }
+        if (isset($form['field_partner_category'])) {
+            $form['field_partner_category']['#access'] = FALSE;
+        }
+        if (isset($form['field_unicou_signature'])) {
+            $form['field_unicou_signature']['#access'] = FALSE;
+        }
+    }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for the partners_agreement node edit form.
+ */
+function agreements_workflow_global_form_node_partners_agreement_edit_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state)
+{
+    // Retrieve the workflow state from the State API.
+    $workflow_state = \Drupal::state()->get('agreements_workflow_global.workflow_state');
+    $current_user = \Drupal::currentUser();
+    // Define the states where the field should be visible.
+    $visible_states = ['approved', 'reconfirmation', 'published'];
+
+    // Log the workflow state and form ID.
+    \Drupal::logger('agreements_workflow_global')->info('Edit form workflow state: @state', [
+        '@state' => $workflow_state,
+    ]);
+
+    $author_name = $current_user->getDisplayName();
+
+    // Modify the title default value.
+    if (isset($form['title'])) {
+        // Get the node entity from the form state.
+        $node = $form_state->getFormObject()->getEntity();
+
+        // Ensure this is a node and of the correct type.
+        if ($node instanceof Node && $node->bundle() === 'partners_agreement') {
+            // Set the default value for the title only if the node is new.
+
+            $first_name = $node->get('field_first_name')->value ?? 'Unknown';
+
+            if ($node->isNew()) {
+                $form['title']['widget'][0]['value']['#default_value'] = $first_name . ' - Partner';
+            }
+
+            // Hide the title field from the form.
+            $form['title']['#access'] = FALSE;
+
+            // Log the title default value.
+            \Drupal::logger('agreements_workflow_global')->info('Title field hidden with default value set to "@title".', [
+                '@title' => $form['title']['widget'][0]['value']['#default_value'] ?? 'Not set',
+            ]);
+        }
+    }
+
+
+    // Hide the field by default.
+    if (isset($form['field_signatures'])) {
+        $form['field_signatures']['#access'] = FALSE;
+        \Drupal::logger('agreements_workflow_global')->info('Field "field_signatures" is hidden by default on edit form.');
+    }
+
+    // Conditionally show the field if the workflow state matches.
+    if (in_array($workflow_state, $visible_states) && isset($form['field_signatures'])) {
+        $form['field_signatures']['#access'] = TRUE;
+        \Drupal::logger('agreements_workflow_global')->info('Field "field_signatures" is set to visible based on the workflow state.');
+    }
+
+    if ($current_user->hasRole('administrator')) {
+        // Show the field for admin role.
+        if (isset($form['field_block_test'])) {
+            $form['field_block_test']['#access'] = TRUE;
+        }
+        if (isset($form['field_partner_category'])) {
+            $form['field_partner_category']['#access'] = TRUE;
+        }
+        if (isset($form['field_unicou_signature'])) {
+            $form['field_unicou_signature']['#access'] = TRUE;
+        }
+    } else {
+        // Hide the field for non-admin roles.
+        if (isset($form['field_block_test'])) {
+            $form['field_block_test']['#access'] = FALSE;
+        }
+        if (isset($form['field_partner_category'])) {
+            $form['field_partner_category']['#access'] = FALSE;
+        }
+        if (isset($form['field_unicou_signature'])) {
+            $form['field_unicou_signature']['#access'] = FALSE;
+        }
+    }
+}
+
+
+/**
+ * Implements hook_block_access().
+ */
+function agreements_workflow_global_block_access($block, $operation)
+{
+    // Get the current user account.
+    $current_user = \Drupal::currentUser();
+
+    // Handle entity-based blocks (like Drupal's standard blocks).
+    if ($block instanceof Block) {
+        // Get the machine name of the block.
+        $block_id = $block->id();
+
+        // Check if the block matches the ones we want to control.
+        if ($block_id === 'unicou_becomeapartner') {
+            // Check if the user has the "partner" role.
+            $is_partner = $current_user->isAuthenticated() && $current_user->hasRole('partner');
+
+            // Allow this block for anyone except "partner" role.
+            return $is_partner ? AccessResult::forbidden() : AccessResult::allowed();
+        }
+
+        if ($block_id === 'unicou_startagreement') {
+            // Check if the user has the "partner" role.
+            $is_partner = $current_user->isAuthenticated() && $current_user->hasRole('partner');
+
+            // Allow this block only for the "partner" role.
+            return $is_partner ? AccessResult::allowed() : AccessResult::forbidden();
+        }
+    }
+
+    // For other blocks, return neutral access (don't override default behavior).
+    return AccessResult::neutral();
+}

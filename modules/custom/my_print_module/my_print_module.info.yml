@@ -1,0 +1,7 @@
+name: 'Print Button Module'
+type: module
+description: 'Adds a print button to specific pages or content types.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - node:node

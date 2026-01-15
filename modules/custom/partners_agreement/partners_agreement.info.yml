@@ -1,0 +1,7 @@
+name: 'Partners Agreement'
+type: module
+description: 'Provides a content type for partners to submit a single agreement.'
+core_version_requirement: ^10
+package: Custom
+dependencies:
+  - drupal:node
