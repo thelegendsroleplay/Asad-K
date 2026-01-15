@@ -1,4 +1,0 @@
-print_styles:
-  css:
-    theme:
-      css/print.css: { media: print }

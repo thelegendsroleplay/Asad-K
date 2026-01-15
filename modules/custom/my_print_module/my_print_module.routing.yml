@@ -1,8 +1,0 @@
-my_print_module.print_page:
-  path: '/node/{node}/print'
-  defaults:
-    _controller: '\Drupal\my_print_module\Controller\PrintController::printPage'
-    _title: 'Print Page'
-  requirements:
-    _entity_access: 'node.view'
-    node: \d+
